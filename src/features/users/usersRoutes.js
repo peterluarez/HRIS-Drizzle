@@ -1,10 +1,14 @@
 "use strict";
 
 import express from "express";
-import { createUser } from "./usersController.js";
+import { signIn, createUser, getUserById, getAllUsers } from "./usersController.js";
+import { verifyApp, verifyToken } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", createUser);
+router.post("/signIn", signIn);
+router.post("/", verifyApp, verifyToken, createUser);
+router.get("/", verifyApp, verifyToken, getAllUsers);
+router.get("/:id", verifyApp, verifyToken, getUserById);
 
 export default router;

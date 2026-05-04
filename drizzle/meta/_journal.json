@@ -8,6 +8,27 @@
       "when": 1777889261885,
       "tag": "0000_misty_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777908943091,
+      "tag": "0001_kind_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777909200716,
+      "tag": "0002_hard_shatterstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777910106581,
+      "tag": "0003_tranquil_proudstar",
+      "breakpoints": true
     }
   ]
 }
