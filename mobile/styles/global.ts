@@ -1,4 +1,4 @@
-export const Colors = {
+export const globalStyles = {
   light: {
     background: '#050505', // Champagne
     primary: '#FF5C00',    // Dark Green
