@@ -41,23 +41,29 @@ export default function LoginScreen() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // 1. Extract the token from your specific backend response structure
-        const token = data.response?.data?.token;
+      if (!response.ok) {
+        const errorMessage = data.response?.message || "Invalid credentials";
+        Alert.alert("Login Failed", errorMessage);
+        return; // STOP execution here
+      }
 
-        if (token) {
-          // 2. Persist the token to storage
-          await AsyncStorage.setItem("userToken", token);
+      const user = data.response?.data?.user;
+      const token = data.response?.data?.token;
+      const roleAdmin = "admin";
 
-          // Optional: Store user info if you want to show "Welcome, Ash Gre" on the Home screen
-          const userJson = JSON.stringify(data.response.data.user);
-          await AsyncStorage.setItem("userInfo", userJson);
-        }
+      if (user?.role !== roleAdmin) {
+        Alert.alert(
+          "Access Denied",
+          "Only administrators can access this portal.",
+        );
+        return; // STOP execution here - do not save token or navigate
+      }
 
-        // 3. Navigate to the tabs folder
+      if (token) {
+        await AsyncStorage.setItem("userToken", token);
+        await AsyncStorage.setItem("userInfo", JSON.stringify(user));
+
         router.replace("/(tabs)/home");
-      } else {
-        Alert.alert("Login Failed", data.message || "Invalid credentials");
       }
     } catch (error) {
       console.error(error);

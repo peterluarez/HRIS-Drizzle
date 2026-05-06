@@ -3,7 +3,7 @@
 import bcrypt from "bcrypt";
 import db from "../../config/db.js";
 import { users } from "../../db/schema.js";
-import { eq, count, or, ilike, desc } from "drizzle-orm";
+import { eq, count, or, and, ilike, desc } from "drizzle-orm";
 
 export const usersService = {
   findByEmail: async (email) => {
@@ -21,27 +21,43 @@ export const usersService = {
     return result[0];
   },
 
-  findAllPaginated: async (page, limit, search = "") => {
+  findAllPaginated: async (page, limit, search = "", role = "") => {
     const offsetValue = (page - 1) * limit;
 
-    const searchFilter = search 
-      ? or(
-          ilike(users.fullName, `%${search}%`),
-          ilike(users.email, `%${search}%`)
-        )
-      : undefined;
+    // 1. Create an array of filters
+    const filters = [];
 
-    const data = await db.select()
+    // 2. Add Role filter only if it exists (not null/undefined)
+    if (role) {
+      filters.push(eq(users.role, role));
+    }
+
+    // 3. Add Search filter only if it exists
+    if (search) {
+      filters.push(
+        or(
+          ilike(users.fullName, `%${search}%`),
+          ilike(users.email, `%${search}%`),
+        ),
+      );
+    }
+
+    // 4. Combine filters using 'and' only if there's more than one
+    const finalFilter = filters.length > 0 ? and(...filters) : undefined;
+
+    const data = await db
+      .select()
       .from(users)
-      .where(searchFilter) 
-      .orderBy(desc(users.id)) 
+      .where(finalFilter)
+      .orderBy(desc(users.id))
       .limit(limit)
       .offset(offsetValue);
 
-    const totalCountRes = await db.select({ value: count() })
+    const totalCountRes = await db
+      .select({ value: count() })
       .from(users)
-      .where(searchFilter);
-    
+      .where(finalFilter);
+
     const totalCount = Number(totalCountRes[0].value);
 
     return {
@@ -49,19 +65,61 @@ export const usersService = {
         totalItems: totalCount,
         totalPages: Math.ceil(totalCount / limit),
         currentPage: page,
-        itemsPerPage: limit
+        itemsPerPage: limit,
       },
-      data
+      data,
     };
-  },
- 
+  }, 
+  
   findById: async (id) => {
-    const result = await db.select()
+    const result = await db
+      .select()
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
 
     // Drizzle returns an array, so we return the first item or null
     return result[0] || null;
+  },
+
+  updateUser: async (id, data) => {
+    // Create a copy so we don't mutate the original request object
+    const updateData = { ...data };
+
+    // Handle password hashing if a new one is provided
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    // Fetch current user to prevent unique constraint errors on their own email
+    const currentUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (currentUser[0] && updateData.email === currentUser[0].email) {
+      // Remove email from the update payload if it's the same as current
+      delete updateData.email;
+    }
+
+    const result = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+
+    return result[0] || null;
+  },
+
+  getDashboardStats: async () => {
+    const res = await db
+      .select({ value: count() })
+      .from(users)
+      .where(eq(users.role, "employee"));
+    
+    return {
+      totalEmployees: Number(res[0].value),
+    };
   },
 };

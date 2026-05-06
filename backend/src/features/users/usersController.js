@@ -106,10 +106,11 @@ export const signIn = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   try {
     const search = req.query.search || "";
+    const role = req.query.role || "";
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
-    const result = await usersService.findAllPaginated(page, limit, search);
+    const result = await usersService.findAllPaginated(page, limit, search, role);
 
     return res.status(200).json({
       response: {
@@ -118,9 +119,7 @@ export const getAllUsers = async (req, res) => {
         result: result,
       },
     });
-  } catch (error) {
-    console.error("Login Error:", error);
-
+  } catch (error) { 
     return res.status(500).json({
       response: {
         success: false,
@@ -136,8 +135,9 @@ export const getUserById = async (req, res) => {
     const { id } = req.params;
 
     // 1. Validate UUID format to prevent Postgres syntax errors
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
     if (!uuidRegex.test(id)) {
       return res.status(404).json({
         response: {
@@ -179,6 +179,86 @@ export const getUserById = async (req, res) => {
         message: "Internal Server Error",
         error: error.message,
       },
+    });
+  }
+};
+
+export const updateUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const { email } = data; // Extract email from data to use it below
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!uuidRegex.test(id)) {
+      return res.status(404).json({
+        response: {
+          success: false,
+          error: "User not found",
+          message: "The provided ID is invalid or not existing.",
+        },
+      });
+    }
+
+    // Check for email collisions with other users
+    if (email) {
+      const existingUser = await usersService.findByEmail(email);
+      // If a user is found with this email, but it's NOT the user we are currently editing
+      if (existingUser && existingUser.id !== id) {
+        return res.status(400).json({
+          response: {
+            success: false,
+            message: "This email is already in use by another account.",
+          },
+        });
+      }
+    }
+
+    // Fixed variable name from 'updateuser' to 'updatedUser' to match the check below
+    const updatedUser = await usersService.updateUser(id, data);
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        response: {
+          success: false,
+          error: "User not found",
+          message: "The provided ID is invalid or not existing.",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      response: {
+        success: true,
+        message: `User ${id} updated successfully`
+      },
+    });
+  } catch (error) {
+    console.error("Update User Error:", error);
+    return res.status(500).json({
+      response: {
+        success: false,
+        message: "Internal Server Error",
+        error: error.message,
+      },
+    });
+  }
+};
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const stats = await usersService.getDashboardStats();
+    return res.status(200).json({
+      response: {
+        success: true,
+        result: stats,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      response: { success: false, message: error.message },
     });
   }
 };

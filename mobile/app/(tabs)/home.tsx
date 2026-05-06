@@ -1,215 +1,168 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  FlatList,
-  TextInput,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { globalStyles } from "../../styles/global";
-import { useRouter } from "expo-router"; // Import the router
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
-interface User {
-  id: string; // Your JSON shows UUID strings
-  status: string;
-  fullName: string; // Must be camelCase to match JSON
-  email: string;
-  phoneNumber: string;
-  role: string;
-  sss: string | null;
-}
+export default function HomeScreen() {
+  const [adminName, setAdminName] = useState("");
+  const [stats, setStats] = useState({ totalEmployees: 0 });
+  const [loading, setLoading] = useState(true);
 
-export default function UserListScreen() {
-  const router = useRouter(); // Initialize router
-  const [search, setSearch] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  // 1. Unified Fetch Function
-  // It uses your exact URL structure. If search is empty, the API handles the defaults.
-  const fetchUsers = async (query = "") => {
-    setLoading(true);
+  const loadDashboardData = async () => {
     try {
-      const token = await AsyncStorage.getItem("userToken");
+      const userInfoRaw = await AsyncStorage.getItem("userInfo");
+      if (userInfoRaw) {
+        const userInfo = JSON.parse(userInfoRaw);
+        const firstName = userInfo.fullName
+          ? userInfo.fullName.split(" ")[0]
+          : "Admin";
 
-      if (!token) {
-        console.log("No token found, redirecting to login...");
-        return;
+        setAdminName(firstName);
       }
 
-      const baseUrl = process.env.EXPO_PUBLIC_URL;
-      const apiPath = "/hris/api/v1/users";
-      const urlApi = `${baseUrl}${apiPath}/?search=${query}`;
-      const clientId = process.env.EXPO_PUBLIC_CLIENT_ID;
-      const clientSecret = process.env.EXPO_PUBLIC_CLIENT_SECRET;
-      const res = await fetch(urlApi, {
+      const token = await AsyncStorage.getItem("userToken");
+      const url = `${process.env.EXPO_PUBLIC_URL}/hris/api/v1/users/stats`;
+
+      const res = await fetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Add this once you store your token
-          "client-id": clientId || "",
-          "client-secret": clientSecret || "",
+          Authorization: `Bearer ${token}`,
+          "client-id": process.env.EXPO_PUBLIC_CLIENT_ID || "",
+          "client-secret": process.env.EXPO_PUBLIC_CLIENT_SECRET || "",
         },
       });
 
-      if (res.status === 401) {
-        console.log("Token expired or invalid. Logging out...");
-        await AsyncStorage.removeItem("userToken"); // Clear the bad token
-        router.replace("/"); // Redirect to login (ensure 'router' is imported from 'expo-router')
-        return; // Stop the rest of the function
-      }
+      const data = await res.json();
 
-      const json = await res.json();
-      const userData = json.response?.result?.data;
-
-      if (userData && Array.isArray(userData)) {
-        setUsers(userData);
+      if (data?.response?.result) {
+        setStats(data.response.result);
       } else {
-        console.log("Check Headers:", { clientId, clientSecret });
-        setUsers([]);
+        setStats({ totalEmployees: 0 });
       }
     } catch (error) {
-      console.error("Fetch Error:", error);
+      console.error("Dashboard Fetch Error:", error);
+      setStats({ totalEmployees: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Initial Load & Search Trigger
-  useEffect(() => {
-    // If search is empty, it fetches the default user list immediately
-    if (search.length === 0) {
-      fetchUsers("");
-    } else {
-      // Debounce search to save server resources
-      const delayDebounceFn = setTimeout(() => {
-        fetchUsers(search);
-      }, 400);
-      return () => clearTimeout(delayDebounceFn);
-    }
-  });
-  const renderUserItem = ({ item }: { item: User }) => (
-    <View style={styles.userCard}>
-      {/* 1. Avatar Section */}
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.fullName ? item.fullName.charAt(0).toUpperCase() : "U"}
-        </Text>
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color={globalStyles.light.primary} />
       </View>
-
-      {/* 2. Content Section - Now a Row to separate Info and Badge */}
-      <View style={styles.cardContent}>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{item.fullName}</Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
-        </View>
-
-        <View
-          style={[
-            styles.roleBadge,
-            {
-              backgroundColor: item.status === "active" ? "#E8F5E9" : "#FFEBEE",
-            },
-          ]}
-        >
-          <Text style={styles.roleText}>{item.role}</Text>
-        </View>
-      </View>
-    </View>
-  );
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchHeader}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={18} color="#666" />
-          <TextInput
-            style={styles.input}
-            placeholder="Search by name or email..."
-            value={search}
-            onChangeText={setSearch}
-          />
+    <ScrollView style={styles.container}>
+      <Text style={styles.greeting}>Hi, {adminName}!</Text>
+
+      <View style={styles.dashboardGrid}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Total Employees</Text>
+          <Text style={styles.cardValue}>{stats.totalEmployees}</Text>
         </View>
       </View>
 
-      {loading && users.length === 0 ? (
-        <ActivityIndicator
-          size="large"
-          color={globalStyles.light.primary}
-          style={{ marginTop: 20 }}
-        />
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderUserItem}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <Text style={styles.empty}>No users found in the HRIS.</Text>
-          }
-        />
-      )}
-    </View>
+      <View style={styles.quickActions}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionRow}>
+          <View style={styles.actionButton}>
+            <Ionicons
+              name="person-add"
+              size={24}
+              color={globalStyles.light.background}
+            />
+            <Text style={styles.actionText}>New Hire</Text>
+          </View>
+          <View style={styles.actionButton}>
+            <Ionicons
+              name="document-text"
+              size={24}
+              color={globalStyles.light.background}
+            />
+            <Text style={styles.actionText}>Reports</Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  userCard: {
-    flexDirection: "row",
-    padding: 15,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 10,
-    marginBottom: 10,
-    alignItems: "center", // Keeps avatar and content vertically centered
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: globalStyles.light.background, // #050505
   },
-  cardContent: {
-    flex: 1, // Takes up all remaining width after the avatar
-    flexDirection: "row", // Places userInfo and roleBadge side-by-side
-    justifyContent: "space-between", // Pushes badge to the right
-    alignItems: "center", // Vertically aligns text and badge
-  },
-  userInfo: {
-    flex: 1, // Ensures text doesn't overflow the badge
-    marginRight: 10,
-  },
-  roleBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    // Remove marginTop since it's now centered on the right
-  },
-  roleText: {
-    fontSize: 10,
+  greeting: {
+    fontSize: 26,
     fontWeight: "bold",
-    color: globalStyles.light.primary, //
-    textTransform: "uppercase",
+    marginBottom: 25,
+    color: "#FFFFFF",
   },
-  container: { flex: 1, backgroundColor: "#fff" },
-  searchHeader: { marginTop: 50, padding: 20 },
-  searchBox: {
+  dashboardGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ebebeb",
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    height: 40,
+    marginBottom: 10,
   },
-  input: { flex: 1, marginLeft: 10 },
-  list: { padding: 15 },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F7E7CE",
+  card: {
+    backgroundColor: "#121212", // Slightly lighter black for contrast
+    padding: 25,
+    borderRadius: 16,
+    width: "100%",
+    borderLeftWidth: 5,
+    borderLeftColor: globalStyles.light.primary, // #FF5C00
+  },
+  cardTitle: {
+    fontSize: 14,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  cardValue: {
+    fontSize: 42,
+    fontWeight: "900",
+    color: globalStyles.light.primary,
+  },
+  quickActions: {
+    marginTop: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#FFFFFF",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 15,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: globalStyles.light.primary,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
+    elevation: 3,
   },
-  avatarText: { color: globalStyles.light.primary, fontWeight: "bold" },
-  userName: { fontWeight: "600", fontSize: 16 },
-  userEmail: { color: "#666", fontSize: 14 },
-  empty: { textAlign: "center", marginTop: 20, color: "#999" },
+  actionText: {
+    marginTop: 8,
+    color: globalStyles.light.background,
+    fontWeight: "bold",
+  },
 });
