@@ -1,0 +1,8 @@
+{
+  "scripts": {
+  "dev": "concurrently --raw \"cd backend && npm run dev\" \"cd mobile && npx expo start\""
+},
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
