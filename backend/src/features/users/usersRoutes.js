@@ -10,7 +10,7 @@ router.post("/signIn", signIn);
 router.post("/", verifyApp, verifyToken, createUser);
 router.get("/", verifyApp, verifyToken, getAllUsers);
 router.get("/stats", verifyApp, verifyToken, getDashboardStats);
-router.get("/:id", verifyApp, verifyToken, getUserById); 
+router.get("/:uuid", verifyApp, verifyToken, getUserById);
 router.put("/:id", verifyApp, verifyToken, updateUserById);
 
 export default router;

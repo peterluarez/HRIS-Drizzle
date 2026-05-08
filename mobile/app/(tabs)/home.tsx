@@ -5,19 +5,25 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { globalStyles } from "../../styles/global";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [adminName, setAdminName] = useState("");
   const [stats, setStats] = useState({ totalEmployees: 0 });
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+ 
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboardData();
+    }, []),
+  );
 
   const loadDashboardData = async () => {
     try {
@@ -67,9 +73,20 @@ export default function HomeScreen() {
     );
   }
 
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const greetingMessage = getTimeGreeting();
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.greeting}>Hi, {adminName}!</Text>
+      <Text style={styles.greeting}>
+        {greetingMessage}, {adminName}!
+      </Text>
 
       <View style={styles.dashboardGrid}>
         <View style={styles.card}>
@@ -81,14 +98,18 @@ export default function HomeScreen() {
       <View style={styles.quickActions}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionRow}>
-          <View style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/create")}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name="person-add"
               size={24}
               color={globalStyles.light.background}
             />
             <Text style={styles.actionText}>New Hire</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.actionButton}>
             <Ionicons
               name="document-text"

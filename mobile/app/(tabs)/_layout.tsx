@@ -19,11 +19,17 @@ export default function TabLayout() {
     };
     checkAuth();
   }, []);
-
-  // Loading state
+ 
   if (isAuthenticated === null) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: globalStyles.light.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: globalStyles.light.background,
+        }}
+      >
         <ActivityIndicator size="large" color={globalStyles.light.primary} />
       </View>
     );
@@ -36,16 +42,16 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={{ 
+      screenOptions={{
         tabBarActiveTintColor: globalStyles.light.primary,
         tabBarInactiveTintColor: "#555555",
-        tabBarStyle: { 
+        tabBarStyle: {
           backgroundColor: "#000000",
           borderTopWidth: 0,
-          height: 65,
+          height: 70,
           paddingBottom: 10,
         },
-        headerStyle: { 
+        headerStyle: {
           backgroundColor: globalStyles.light.background,
           elevation: 0,
           shadowOpacity: 0,
@@ -58,21 +64,26 @@ export default function TabLayout() {
         name="home"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color }) => <Ionicons name="grid" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="grid" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="users"
         options={{
           title: "Employees",
-          tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="people" size={24} color={color} />
+          ),
         }}
-      />
+      /> 
       <Tabs.Screen
         name="create"
         options={{
-          title: "Add",
-          tabBarIcon: ({ color }) => <Ionicons name="add-circle" size={28} color={color} />,
+          title: "Add Employee",
+          href: null,
+          headerShown: true,
         }}
       />
     </Tabs>
