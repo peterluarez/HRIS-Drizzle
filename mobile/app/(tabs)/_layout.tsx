@@ -19,8 +19,7 @@ export default function TabLayout() {
     };
     checkAuth();
   }, []);
-
-  // Loading state
+ 
   if (isAuthenticated === null) {
     return (
       <View
@@ -49,7 +48,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: "#000000",
           borderTopWidth: 0,
-          height: 65,
+          height: 70,
           paddingBottom: 10,
         },
         headerStyle: {

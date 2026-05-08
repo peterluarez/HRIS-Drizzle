@@ -10,17 +10,20 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { globalStyles } from "../../styles/global";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 
 export default function HomeScreen() {
   const router = useRouter();
   const [adminName, setAdminName] = useState("");
   const [stats, setStats] = useState({ totalEmployees: 0 });
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+ 
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboardData();
+    }, []),
+  );
 
   const loadDashboardData = async () => {
     try {

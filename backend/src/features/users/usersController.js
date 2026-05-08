@@ -132,31 +132,30 @@ export const getAllUsers = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // 1. Validate UUID format to prevent Postgres syntax errors
+    const { uuid } = req.params; 
+    
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!uuidRegex.test(id)) {
+    if (!uuidRegex.test(uuid)) {
       return res.status(404).json({
         response: {
           success: false,
           error: "User not found",
-          message: "The provided ID is invalid or not existing.",
+          message: "The provided ID is invalid or not existing.s",
         },
       });
     }
 
     // 2. Call the modular service
-    const user = await usersService.findById(id);
+    const user = await usersService.findById(uuid);
 
     if (!user) {
       return res.status(404).json({
         response: {
           success: false,
           error: "User not found",
-          message: "The provided ID is invalid or not existing.",
+          message: "The provided ID is invalid or not existing.2",
         },
       });
     }

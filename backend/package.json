@@ -4,12 +4,12 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate", 
-    "db:push": "npx drizzle-kit push" 
-    
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "npx drizzle-kit push"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",

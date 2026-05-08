@@ -71,11 +71,11 @@ export const usersService = {
     };
   }, 
   
-  findById: async (id) => {
+  findById: async (uuid) => {
     const result = await db
       .select()
       .from(users)
-      .where(eq(users.id, id))
+      .where(eq(users.uuid, uuid))
       .limit(1);
 
     // Drizzle returns an array, so we return the first item or null

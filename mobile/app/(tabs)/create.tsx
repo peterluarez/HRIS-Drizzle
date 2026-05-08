@@ -31,16 +31,36 @@ export default function CreateUserScreen() {
     hmo: "",
   });
 
+  const handleCancel = () => {
+    setForm({
+      fullName: "",
+      email: "",
+      phoneNumber: "",
+      password: "",
+      role: "employee",
+      sss: "",
+      philhealth: "",
+      pagibig: "",
+      tin: "",
+      hmo: "",
+    });
+
+    router.back();
+  };
+
   const handleCreate = async () => {
-    if (!form.fullName || !form.email || !form.password || !form.role) {
-      Alert.alert("Required Fields", "Name, Email, and Password are required.");
+    if (!form.fullName || !form.email || !form.password || !form.phoneNumber) {
+      Alert.alert(
+        "Required Fields",
+        "Name, Email, Phone, and Password are required.",
+      );
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem("userToken");
       const url = `${process.env.EXPO_PUBLIC_URL}/hris/api/v1/users`;
-      console.log(url);
+
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -54,9 +74,23 @@ export default function CreateUserScreen() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        Alert.alert("Success", "Employee profile created.");
-        router.back();
+      if (res.status === 200 || res.status === 201) {
+        setForm({
+          fullName: "",
+          email: "",
+          phoneNumber: "",
+          password: "",
+          role: "employee",
+          sss: "",
+          philhealth: "",
+          pagibig: "",
+          tin: "",
+          hmo: "",
+        });
+
+        Alert.alert("Success", "Employee profile created.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
       } else {
         Alert.alert("Error", data.message || "Registration failed.");
       }
@@ -71,19 +105,32 @@ export default function CreateUserScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionHeader}>Account Access</Text>
+        <Text style={styles.sectionHeader}>Account Details</Text>
+
         <TextInput
           style={styles.input}
           placeholder="Full Name *"
           placeholderTextColor="#666"
+          value={form.fullName}
           onChangeText={(val) => setForm({ ...form, fullName: val })}
         />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Phone Number *"
+          placeholderTextColor="#666"
+          keyboardType="phone-pad"
+          value={form.phoneNumber}
+          onChangeText={(val) => setForm({ ...form, phoneNumber: val })}
+        />
+
         <TextInput
           style={styles.input}
           placeholder="Email Address *"
           placeholderTextColor="#666"
           autoCapitalize="none"
           keyboardType="email-address"
+          value={form.email}
           onChangeText={(val) => setForm({ ...form, email: val })}
         />
 
@@ -135,6 +182,7 @@ export default function CreateUserScreen() {
             placeholder="SSS"
             placeholderTextColor="#666"
             keyboardType="numeric"
+            value={form.sss}
             onChangeText={(val) => setForm({ ...form, sss: val })}
           />
           <TextInput
@@ -142,6 +190,7 @@ export default function CreateUserScreen() {
             placeholder="PhilHealth"
             placeholderTextColor="#666"
             keyboardType="numeric"
+            value={form.philhealth}
             onChangeText={(val) => setForm({ ...form, philhealth: val })}
           />
         </View>
@@ -152,6 +201,7 @@ export default function CreateUserScreen() {
             placeholder="Pag-IBIG"
             placeholderTextColor="#666"
             keyboardType="numeric"
+            value={form.pagibig}
             onChangeText={(val) => setForm({ ...form, pagibig: val })}
           />
           <TextInput
@@ -159,6 +209,7 @@ export default function CreateUserScreen() {
             placeholder="TIN"
             placeholderTextColor="#666"
             keyboardType="numeric"
+            value={form.tin}
             onChangeText={(val) => setForm({ ...form, tin: val })}
           />
         </View>
@@ -167,16 +218,14 @@ export default function CreateUserScreen() {
           style={styles.input}
           placeholder="HMO Information"
           placeholderTextColor="#666"
+          value={form.hmo}
           onChangeText={(val) => setForm({ ...form, hmo: val })}
         />
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleCreate}>
           <Text style={styles.submitBtnText}>Create Employee</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
       </ScrollView>

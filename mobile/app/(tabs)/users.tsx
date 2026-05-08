@@ -6,14 +6,17 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { globalStyles } from "../../styles/global";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
-  id: string;
+  id: number;
+  uuid: string;
   status: string;
   fullName: string;
   email: string;
@@ -26,16 +29,23 @@ export default function UserListScreen() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [isMoreLoading, setIsMoreLoading] = useState(false);
 
-  const fetchUsers = async (query = "") => {
-    setLoading(true);
+  const fetchUsers = async (query = "", pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
+    else setIsMoreLoading(true);
+
+    if (users.length === 0) setLoading(true);
+
     try {
       const token = await AsyncStorage.getItem("userToken");
       if (!token) return;
 
       const roleEmployee = "employee";
-      const urlApi = `${process.env.EXPO_PUBLIC_URL}/hris/api/v1/users/?search=${query}&role=${roleEmployee}`;
+      const urlApi = `${process.env.EXPO_PUBLIC_URL}/hris/api/v1/users/?search=${query}&role=${roleEmployee}&page=${pageNum}&limit=10`;
 
       const res = await fetch(urlApi, {
         method: "GET",
@@ -55,28 +65,62 @@ export default function UserListScreen() {
 
       const json = await res.json();
       const userData = json.response?.result?.data;
+      const total = json.response?.result?.meta?.totalItems;
 
       if (userData && Array.isArray(userData)) {
-        setUsers(userData);
-      } else {
-        setUsers([]);
+        setUsers((prev) => {
+          if (pageNum === 1) return userData;
+
+          // Double-check for duplicates before adding to state
+          const newItems = userData.filter(
+            (newItem) => !prev.some((oldItem) => oldItem.uuid === newItem.uuid),
+          );
+
+          return [...prev, ...newItems];
+        });
+        setTotalCount(total || 0);
       }
     } catch (error) {
       console.error("Fetch Error:", error);
     } finally {
       setLoading(false);
+      setIsMoreLoading(false);
     }
   };
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchUsers(search);
+      setPage(1); // Reset page state
+      fetchUsers(search, 1); // Fetch first page
     }, 400);
     return () => clearTimeout(delayDebounceFn);
   }, [search]);
 
+  useFocusEffect(
+    useCallback(() => {
+      // This runs when the screen is focused
+      setPage(1);
+      fetchUsers(search, 1);
+
+      return () => {
+        // This runs when the user LEAVES the screen
+        setSearch(""); // Clear the text input
+        setUsers([]); // Optional: Clear the list so it doesn't "flicker" next time
+      };
+    }, []),
+  );
+
   const renderUserItem = ({ item }: { item: User }) => (
-    <View style={styles.userCard}>
+    <TouchableOpacity
+      style={styles.userCard}
+      onPress={() =>
+        router.push({
+          pathname: "/user/[uuid]",
+          params: { uuid: item.uuid },
+        })
+      } // Route to dynamic page
+      activeOpacity={0.7}
+    >
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>
           {item.fullName ? item.fullName.charAt(0).toUpperCase() : "U"}
@@ -88,21 +132,41 @@ export default function UserListScreen() {
           <Text style={styles.userName}>{item.fullName}</Text>
           <Text style={styles.userEmail}>{item.email}</Text>
         </View>
-
-        <View style={[
-          styles.statusBadge,
-          { borderColor: item.status === "active" ? "#4CAF50" : "#F44336" }
-        ]}>
-          <Text style={[
-            styles.statusText,
-            { color: item.status === "active" ? "#4CAF50" : "#F44336" }
-          ]}>
-            {item.status}
-          </Text>
-        </View>
+        <Ionicons name="chevron-forward" size={20} color="#444" />
       </View>
-    </View>
+    </TouchableOpacity>
   );
+
+  // 4. Added Footer Component for "Load More"
+  const renderFooter = () => {
+    // Only show button if there are more items to load
+    if (users.length >= totalCount && totalCount > 0) {
+      return <View style={{ height: 120 }} />;
+    }
+    return (
+      <View style={styles.footerContainer}>
+        {isMoreLoading ? (
+          <ActivityIndicator color={globalStyles.light.primary} />
+        ) : (
+          <TouchableOpacity
+            style={styles.loadMoreBtn}
+            onPress={() => {
+              const nextPage = page + 1; // This will now correctly be 2
+              setPage(nextPage);
+              fetchUsers(search, nextPage);
+            }}
+          >
+            <Text style={styles.loadMoreText}>Load More</Text>
+            <Ionicons
+              name="chevron-down"
+              size={16}
+              color={globalStyles.light.primary}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -119,6 +183,13 @@ export default function UserListScreen() {
         </View>
       </View>
 
+      <View style={styles.counterContainer}>
+        <Text style={styles.counterText}>
+          Showing <Text style={styles.countHighlight}>{users.length}</Text> out
+          of <Text style={styles.countHighlight}>{totalCount}</Text> employees
+        </Text>
+      </View>
+
       {loading && users.length === 0 ? (
         <ActivityIndicator
           size="large"
@@ -128,9 +199,10 @@ export default function UserListScreen() {
       ) : (
         <FlatList
           data={users}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.uuid}
           renderItem={renderUserItem}
           contentContainerStyle={styles.list}
+          ListFooterComponent={renderFooter}
           ListEmptyComponent={
             <Text style={styles.empty}>No employees found.</Text>
           }
@@ -141,13 +213,13 @@ export default function UserListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: globalStyles.light.background 
+  container: {
+    flex: 1,
+    backgroundColor: globalStyles.light.background,
   },
-  searchHeader: { 
-    padding: 15, 
-    backgroundColor: globalStyles.light.background 
+  searchHeader: {
+    padding: 15,
+    backgroundColor: globalStyles.light.background,
   },
   searchBox: {
     flexDirection: "row",
@@ -159,13 +231,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333",
   },
-  input: { 
-    flex: 1, 
-    marginLeft: 10, 
-    color: "#FFFFFF" 
-  },
-  list: { 
-    padding: 15 
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    color: "#FFFFFF",
   },
   userCard: {
     flexDirection: "row",
@@ -184,10 +253,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 15,
   },
-  avatarText: { 
-    color: "#000", 
-    fontWeight: "bold", 
-    fontSize: 18 
+  avatarText: {
+    color: "#000",
+    fontWeight: "bold",
+    fontSize: 18,
   },
   cardContent: {
     flex: 1,
@@ -198,15 +267,15 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
   },
-  userName: { 
-    fontWeight: "bold", 
-    fontSize: 16, 
-    color: "#FFFFFF" 
+  userName: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#FFFFFF",
   },
-  userEmail: { 
-    color: "#AAAAAA", 
-    fontSize: 13, 
-    marginTop: 2 
+  userEmail: {
+    color: "#AAAAAA",
+    fontSize: 13,
+    marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -219,9 +288,47 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textTransform: "uppercase",
   },
-  empty: { 
-    textAlign: "center", 
-    marginTop: 40, 
-    color: "#666" 
+  empty: {
+    textAlign: "center",
+    marginTop: 40,
+    color: "#666",
+  },
+  counterContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: globalStyles.light.background,
+  },
+  counterText: {
+    color: "#888",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  countHighlight: {
+    color: globalStyles.light.primary,
+    fontWeight: "bold",
+  },
+  list: {
+    padding: 15,
+    paddingBottom: 20, // Reduced as footer handles the bottom space
+  },
+  footerContainer: {
+    paddingVertical: 30,
+    alignItems: "center",
+    marginBottom: 100, // Important: Ensures button clears your floating tabs
+  },
+  loadMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#121212",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  loadMoreText: {
+    color: globalStyles.light.primary,
+    fontWeight: "bold",
+    marginRight: 8,
   },
 });
